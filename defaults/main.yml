@@ -26,3 +26,8 @@ rt_siteconfig: |
   Set( $WebDomain, "test.exemple.com");
   Set( $WebPort, "80");
   Set( $WebPath, "");
+
+## Database
+rt_initialize_database: false
+rt_initialize_database_args:
+  - --force

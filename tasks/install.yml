@@ -1,8 +1,8 @@
 ---
-- name: "Test for an existing RT installation"
-  ansible.builtin.stat:
-    path: "{{ rt_install_dir }}/etc/RT_Config.pm"
-  register: rt_installed
+#- name: "Test for an existing RT installation"
+#  ansible.builtin.stat:
+#    path: "{{ rt_install_dir }}/etc/RT_Config.pm"
+#  register: rt_installed
 
 - name: "Create the rt group"
   ansible.builtin.group:
@@ -21,21 +21,26 @@
     home: "{{ rt_system_user_home }}"
   when: rt_system_user != "root"
 
-- name: "Install tasks"
-  when: not rt_installed.stat.exists
-  block:
-    - name: "Create dirs"
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0755'
-        owner: "{{ rt_system_user }}"
-        group: "{{ rt_system_group }}"
-      with_items:
-        - "{{ rt_download_dir }}"
-        - "{{ rt_src_dir }}"
-        - "{{ rt_install_dir }}"
+- name: "Create dirs"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: "{{ rt_system_user }}"
+    group: "{{ rt_system_group }}"
+  with_items:
+    - "{{ rt_download_dir }}"
+    - "{{ rt_src_dir }}"
+    - "{{ rt_install_dir }}"
 
+- name: Test for RT sources
+  ansible.builtin.stat:
+    path: "{{ rt_src_dir }}/rt-{{ rt_version }}"
+  register: rtsrc_installed
+
+- name: Download tasks
+  when: not rtsrc_installed.stat.exists
+  block:
     - name: "Download..."
       ansible.builtin.get_url:
         url: "{{ rt_download_url }}/{{ rt_pkg_name }}"
@@ -55,9 +60,21 @@
     - name: "Install perl packages from cpan"
       community.general.cpanm:
         name: "{{ item }}"
-        #mode: new
       with_items: "{{ rt_cpan_modules }}"
 
+#- name: Install newer version of libdbix-searchbuilder
+#  apt:
+#    deb: https://snapshot.debian.org/archive/debian/20220805T212127Z/pool/main/libd/libdbix-searchbuilder-perl/libdbix-searchbuilder-perl_1.71-2~bpo11%2B1_all.deb
+#  when: "{{ rt_version[0] }} == 5"
+
+- name: Test for an existing RT installation
+  ansible.builtin.stat:
+    path: "{{ rt_install_dir }}/etc/RT_Config.pm"
+  register: rt_installed
+
+- name: Install tasks
+  when: not rt_installed.stat.exists
+  block:
     - name: "Configure RT"
       ansible.builtin.command: |
         ./configure \
@@ -95,5 +112,34 @@
   ansible.builtin.template:
     src: RT_SiteConfig.pm.j2
     dest: "{{ rt_install_dir }}/etc/RT_SiteConfig.pm"
+    owner: "{{ rt_web_user }}"
+    group: "{{ rt_web_group }}"
     backup: true
-    mode: '0640'
+    mode: '0440'
+
+- name: Ensure proper permission
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ rt_web_user }}"
+    group: "{{ rt_web_group }}"
+    mode: '0440'
+  with_items:
+    - "{{ rt_install_dir }}/etc/RT_Config.pm"
+    - "{{ rt_install_dir }}/etc/RT_SiteConfig.pm"
+
+- name: Make initialize-database
+  ansible.builtin.command:
+  args:
+    cmd: >-
+      sbin/rt-setup-database --action init \
+        {{ rt_initialize_database_args | join(' ') }}
+    chdir: "{{ rt_install_dir }}"
+  environment:
+    AUTOMATED_TESTING: "true"
+    PERL_MM_USE_DEFAULT: "1"
+    RT_DBA_USER: "{{ rt_dba_user }}"
+    RT_DBA_PASSWORD: "{{ rt_dba_password }}"
+  #no_log: true
+  notify: Restart Apache
+  when:
+    - "rt_initialize_database"
