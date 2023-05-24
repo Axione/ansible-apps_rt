@@ -1,0 +1,99 @@
+---
+- name: "Test for an existing RT installation"
+  ansible.builtin.stat:
+    path: "{{ rt_install_dir }}/etc/RT_Config.pm"
+  register: rt_installed
+
+- name: "Create the rt group"
+  ansible.builtin.group:
+    name: "{{ rt_system_group }}"
+    state: present
+    system: true
+  when: rt_system_group != "root"
+
+- name: "Create the rt user"
+  ansible.builtin.user:
+    name: "{{ rt_system_user }}"
+    groups: "{{ rt_system_group }}"
+    append: true
+    system: true
+    create_home: false
+    home: "{{ rt_system_user_home }}"
+  when: rt_system_user != "root"
+
+- name: "Install tasks"
+  when: not rt_installed.stat.exists
+  block:
+    - name: "Create dirs"
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: "{{ rt_system_user }}"
+        group: "{{ rt_system_group }}"
+      with_items:
+        - "{{ rt_download_dir }}"
+        - "{{ rt_src_dir }}"
+        - "{{ rt_install_dir }}"
+
+    - name: "Download..."
+      ansible.builtin.get_url:
+        url: "{{ rt_download_url }}/{{ rt_pkg_name }}"
+        dest: "{{ rt_download_dir }}"
+        mode: '0640'
+
+    - name: "Unarchive..."
+      ansible.builtin.unarchive:
+        src: "{{ rt_download_dir }}/{{ rt_pkg_name }}"
+        dest: "{{ rt_src_dir }}"
+        remote_src: true
+
+    - name: "Install package deps for RT"
+      ansible.builtin.apt:
+        name: "{{ rt_pkg }}"
+
+    - name: "Install perl packages from cpan"
+      community.general.cpanm:
+        name: "{{ item }}"
+        #mode: new
+      with_items: "{{ rt_cpan_modules }}"
+
+    - name: "Configure RT"
+      ansible.builtin.command: |
+        ./configure \
+          {{ rt_configure_options | join(' ') }}
+      args:
+        chdir: "{{ rt_src_dir }}/rt-{{ rt_version }}"
+      changed_when: true
+
+    - name: "Make fixdeps (cpanm)"
+      community.general.make:
+        chdir: "{{ rt_src_dir }}/rt-{{ rt_version }}"
+        target: fixdeps
+      environment:
+        AUTOMATED_TESTING: "true"
+        NONINTERACTIVE_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
+        RT_FIX_DEPS_CMD: "{{ rt_cpanm_binpath }}"
+      when:
+        - "rt_cpanm_binpath is not none"
+
+    - name: "Make testdeps"
+      community.general.make:
+        chdir: "{{ rt_src_dir }}/rt-{{ rt_version }}"
+        target: testdeps
+      environment:
+        AUTOMATED_TESTING: "true"
+        PERL_MM_USE_DEFAULT: "1"
+
+    - name: "Make install"
+      community.general.make:
+        chdir: "{{ rt_src_dir }}/rt-{{ rt_version }}"
+        target: install
+
+- name: "Install RT_SiteConfig.pm"
+  ansible.builtin.template:
+    src: RT_SiteConfig.pm.j2
+    dest: "{{ rt_install_dir }}/etc/RT_SiteConfig.pm"
+    backup: true
+    mode: '0640'

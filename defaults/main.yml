@@ -1,0 +1,28 @@
+---
+### Install
+rt_version: 5.0.4
+rt_download_dir: /tmp/rt
+rt_src_dir: /opt/rt/src
+rt_install_dir: /opt/rt/rt
+
+rt_system_group: rt
+rt_system_user: rt
+rt_system_user_home: /opt/rt
+rt_web_user: 'www-data'
+rt_web_group: 'www-data'
+
+### Configure
+rt_configure_options:
+  - --enable-graphviz
+  - --enable-gd
+  - --prefix={{ rt_install_dir }}
+  - --with-web-user={{ rt_web_user }}
+  - --with-web-group={{ rt_web_group }}
+  - --with-db-type=mysql
+  - --with-rt-group={{ rt_system_group }}
+rt_siteconfig: |
+  Set( $rtname, "My rt");
+  Set( $Organization, "My org");
+  Set( $WebDomain, "test.exemple.com");
+  Set( $WebPort, "80");
+  Set( $WebPath, "");

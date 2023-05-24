@@ -1,0 +1,4 @@
+---
+rt_download_url: https://download.bestpractical.com/pub/rt/release
+rt_pkg_name: rt-{{ rt_version }}.tar.gz
+rt_cpanm_binpath: /usr/bin/cpan
