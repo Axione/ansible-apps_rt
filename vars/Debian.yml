@@ -81,6 +81,7 @@ rt_pkg:
   - starlet
   - libdbd-sqlite3-perl
   - gcc
+  - libdbd-pg-perl
 
 rt_cpan_modules:
   - GnuPG::Interface

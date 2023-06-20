@@ -15,7 +15,6 @@
   ansible.builtin.user:
     name: "{{ rt_system_user }}"
     groups: "{{ rt_system_group }}"
-    append: true
     system: true
     create_home: false
     home: "{{ rt_system_user_home }}"
@@ -117,15 +116,15 @@
     backup: true
     mode: '0440'
 
-- name: Ensure proper permission
-  ansible.builtin.file:
-    path: "{{ item }}"
-    owner: "{{ rt_web_user }}"
-    group: "{{ rt_web_group }}"
-    mode: '0440'
-  with_items:
-    - "{{ rt_install_dir }}/etc/RT_Config.pm"
-    - "{{ rt_install_dir }}/etc/RT_SiteConfig.pm"
+#- name: Ensure proper permission
+#  ansible.builtin.file:
+#    path: "{{ item }}"
+#    owner: "{{ rt_web_user }}"
+#    group: "{{ rt_web_group }}"
+#    mode: '0440'
+#  with_items:
+#    - "{{ rt_install_dir }}/etc/RT_Config.pm"
+#    - "{{ rt_install_dir }}/etc/RT_SiteConfig.pm"
 
 - name: Make initialize-database
   ansible.builtin.command:
