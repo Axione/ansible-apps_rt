@@ -16,9 +16,15 @@
     name: "{{ rt_system_user }}"
     groups: "{{ rt_system_group }}"
     system: true
-    create_home: false
+    create_home: true
     home: "{{ rt_system_user_home }}"
   when: rt_system_user != "root"
+
+- name: "Adding user"
+  ansible.builtin.user:
+    name: "{{ rt_web_user }}"
+    groups: "{{ rt_system_user }}"
+    append: true
 
 - name: "Create dirs"
   ansible.builtin.file:
@@ -31,6 +37,7 @@
     - "{{ rt_download_dir }}"
     - "{{ rt_src_dir }}"
     - "{{ rt_install_dir }}"
+    - "{{ rt_system_user_home }}"
 
 - name: Test for RT sources
   ansible.builtin.stat:
@@ -133,6 +140,7 @@
       sbin/rt-setup-database --action init \
         {{ rt_initialize_database_args | join(' ') }}
     chdir: "{{ rt_install_dir }}"
+  changed_when: false
   environment:
     AUTOMATED_TESTING: "true"
     PERL_MM_USE_DEFAULT: "1"
