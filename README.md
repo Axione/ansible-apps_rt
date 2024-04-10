@@ -22,6 +22,10 @@
 ## Description
 
 Install and configure Best Practical's Request Tracker (RT).
+
+RT depends on many Perl modules, Apache with either mod_perl or mod_fcgid, and PostgreSQL or MySQL.
+RT prefers mod_fcgid and MySQL.
+
 ## Requirements
 
 none
